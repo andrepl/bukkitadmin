@@ -31,6 +31,14 @@ class Option(object):
         self.completer = kwargs.pop('completer', None)
         self.kwargs = kwargs
 
+def plugin_completer(prefix, **kwargs):
+    """
+    argcomplete completion handler for registered plugins
+
+    """
+    lib = Library.get()
+    return [p.name for p in lib.plugins if p.name.lower().startswith(prefix)]
+
 def plugin_source_completer(prefix, **kwargs):
     """
     argcomplete completion handler for registered plugin sources
@@ -245,7 +253,7 @@ class ServerAddPlugin(Command):
     name = 'addplugin'
 
     options = (
-        Option("plugin", metavar="PLUGIN_NAME", nargs="+"),
+        Option("plugin", metavar="PLUGIN_NAME", nargs="+", completer=plugin_completer),
     )
 
     @classmethod
@@ -561,7 +569,7 @@ class Plugin(Command):
     name = 'plugin'
 
     options = (
-        Option("plugin", metavar="PLUGIN_NAME"),
+        Option("plugin", metavar="PLUGIN_NAME", completer=plugin_completer),
     )
 
     subcommands = (
