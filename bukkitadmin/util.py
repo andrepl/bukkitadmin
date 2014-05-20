@@ -53,8 +53,6 @@ def query_yes_no(question, default="yes"):
             sys.stdout.write("Please respond with 'yes' or 'no' " \
                              "(or 'y' or 'n').\n")
 
-
-
 def format_as_kwargs(kwargs, priority_keys=None):
     priority_keys = priority_keys or []
     keys = list(kwargs.keys())
