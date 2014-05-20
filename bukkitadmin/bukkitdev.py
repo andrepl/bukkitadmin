@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 import os
+from bs4 import NavigableString
 
 import feedparser
 import requests
@@ -14,11 +15,25 @@ class  PluginSource(object):
     source_type = "bukkitdev"
     name = 'bukkitdev'
 
-    def search(self, name):
+    def search_result_url(self, search_result):
+        url = self._get_download_url(search_result['slug'])
+        return url, {'slug': search_result['slug'], 'last_download_url': url}
 
-        slug = self.get_slug(name)
-        url = self._get_download_url(slug)
-        return url, {'slug': slug, 'last_download_url': url}
+    def search(self, searchstr):
+        soup = get_page_soup("http://dev.bukkit.org/bukkit-plugins/?search=%s" % (searchstr,))
+        tbl = soup.find("table", {'class': "listing"}).find("tbody").findAll('tr', {'class': 'row-joined-to-next'})
+        results = []
+        for row in tbl:
+            link = row.find('h2').contents[0]
+            next = row.nextSibling
+            while isinstance(next, NavigableString):
+                next = next.nextSibling
+            results.append(dict(
+                name=link.text,
+                summary=next.td.get_text(),
+                slug=link['href'].strip('/').split('/')[-1],
+            ))
+        return results
 
     def get_slug(self, plugin_name):
         time.sleep(0.5)

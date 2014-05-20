@@ -1,4 +1,5 @@
 import contextlib
+import difflib
 import hashlib
 import os
 import shutil
@@ -20,6 +21,19 @@ def chdir(dirname=None):
         yield
     finally:
         os.chdir(curdir)
+
+def prompt_number(min_, max_, prompt="Choice"):
+    while True:
+        sys.stdout.write("%s [%s-%s]: " % (prompt, min_, max_))
+        choice = raw_input().lower()
+        try:
+            val = int(choice)
+            if not (min_ <= val <= max_):
+                raise ValueError("out of range")
+            return val
+        except ValueError:
+            print "Invalid choice, please enter a number between %s and %s" % (min_, max_)
+
 
 def query_yes_no(question, default="yes"):
     """Ask a yes/no question via raw_input() and return their answer.
@@ -122,3 +136,26 @@ def hashfile(fileobj=None, path=None):
         if opened:
             fileobj.close()
     return hasher.digest()
+
+
+def normalize_string(s):
+    return s.lower().replace(' ', '').replace('-', '').replace(' ', '')
+
+def string_diff(s1, s2):
+    s1 = normalize_string(s1)
+    s2 = normalize_string(s2)
+    return difflib.SequenceMatcher(None, s1, s2).ratio()
+
+def terminal_size():
+    import fcntl, termios, struct
+    h, w, hp, wp = struct.unpack('HHHH',
+                                 fcntl.ioctl(0, termios.TIOCGWINSZ,
+                                             struct.pack('HHHH', 0, 0, 0, 0)))
+    return w, h
+
+
+def smart_truncate(content, length=100, suffix='...'):
+    if len(content) <= length:
+        return content
+    else:
+        return ' '.join(content[:length+1].split(' ')[0:-1]) + suffix

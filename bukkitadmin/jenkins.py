@@ -2,9 +2,9 @@ from __future__ import absolute_import
 
 import re
 import urllib
+import feedparser
 
-from .util import download_file, get_page_soup
-
+from .util import download_file, get_page_soup, string_diff
 
 class PluginSource(object):
 
@@ -14,12 +14,21 @@ class PluginSource(object):
         self.name = name
         self.host = host
 
-    def search(self, name):
+    def search_result_url(self, result):
         try:
-            url = self._get_download_url(name)
+            url = self._get_download_url(result['name'])
             return url, {'source': self.name, 'last_download_url': url}
         except:
             return None, {}
+
+    def search(self, searchstr):
+        feed = feedparser.parse("http://%s/rssLatest" % (self.host,))
+        results = []
+        for entry in feed.entries:
+            name = entry['title'].split("#")[0].strip()
+            if string_diff(name, searchstr) < 0.75:
+                results.append({'name': name})
+        return results
 
     def serialize(self):
         return {'type': self.source_type, 'host': self.host}

@@ -7,7 +7,7 @@ import shutil
 import yaml
 
 from . import jenkins, bukkitdev
-from bukkitadmin.util import extract_plugin_info, hashfile, download_file, query_yes_no
+from bukkitadmin.util import extract_plugin_info, hashfile, download_file, query_yes_no, prompt_number, terminal_size, smart_truncate
 from bukkitadmin.versionparser import parse_version
 
 
@@ -118,6 +118,7 @@ class PluginNotFound(Exception):
 
 class NoPluginSource(Exception):
     pass
+
 
 
 class Library(object):
@@ -231,22 +232,38 @@ class Library(object):
             elif isinstance(source, basestring):
                 source = self.sources[source]
 
-            download_url, meta = source.search(name)
+            results = source.search(name)
 
-            if download_url:
-                file = download_file(download_url)
-                info = extract_plugin_info(file)
-                dest = os.path.join(self.path, "%s.jar" %(info['name'],))
-                shutil.move(file, dest)
-            else:
+            if len(results) == 0:
                 raise PluginNotFound(name)
+
+            elif len(results) == 1:
+                choice = results[0]
+            else:
+                print "Found multiple matches for '%s' on source %s" % (name, source.name)
+                desc_width = terminal_size()[0] - 8
+                if desc_width < 10:
+                    desc_width = 20 # if the terminal is too small, just display a decent amount and wrap
+
+                for i, plugin in enumerate(results):
+                    print "%s) %s\n    %s" % (i+1, plugin['name'], smart_truncate(plugin['summary'], ))
+                print "0) None of the above."
+                choice = prompt_number(0, i+1)
+                if not choice:
+                    return 0
+                choice = results[choice-1]
+
+            download_url, meta = source.search_result_url(choice)
+            file = download_file(download_url)
+            info = extract_plugin_info(file)
+            dest = os.path.join(self.path, "%s.jar" %(info['name'],))
+            shutil.move(file, dest)
 
         pluginfile = PluginFile(dest)
         pluginfile.set_meta(meta)
         self._cached.append(pluginfile)
         if not jarpath:
             self.get_plugin_dependencies(pluginfile)
-
 
     def get_plugin_dependencies(self, plugin):
         if isinstance(plugin, basestring):
