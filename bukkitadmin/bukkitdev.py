@@ -44,7 +44,7 @@ class  PluginSource(object):
         time.sleep(0.5)
         if DEBUG:
             print "fetching %s" % (url,)
-        soup = get_page_soup(requests.get(url).text)
+        soup = get_page_soup(url)
         if DEBUG:
             print "page: ", soup.find("title")
         return soup.find('a', text="Download").parent['href']
