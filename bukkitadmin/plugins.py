@@ -238,6 +238,8 @@ class Library(object):
                 info = extract_plugin_info(file)
                 dest = os.path.join(self.path, "%s.jar" %(info['name'],))
                 shutil.move(file, dest)
+            else:
+                raise PluginNotFound(name)
 
         pluginfile = PluginFile(dest)
         pluginfile.set_meta(meta)

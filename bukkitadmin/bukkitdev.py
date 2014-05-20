@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+import os
 
 import feedparser
 import requests
@@ -6,6 +7,7 @@ import time
 
 from .util import download_file, get_page_soup
 
+DEBUG = 'BUKKITADMIN_DEBUG' in os.environ
 
 class  PluginSource(object):
 
@@ -31,11 +33,19 @@ class  PluginSource(object):
 
     def _get_download_url(self, slug):
         feed_url = "http://dev.bukkit.org/bukkit-plugins/%s/files.rss" % (slug,)
+        if DEBUG:
+            print "fetching %s" % (feed_url,)
         time.sleep(0.5)
         feed = feedparser.parse(feed_url)
+        if DEBUG:
+            print "feed Entries: ", len(feed.entries)
         url = feed.entries[0]['links'][0]['href']
         time.sleep(0.5)
+        if DEBUG:
+            print "fetching %s" % (url,)
         soup = feedparser.BeautifulSoup.BeautifulSoup(requests.get(url).text)
+        if DEBUG:
+            print "page: ", soup.find("title")
         return soup.find('a', text="Download").parent['href']
 
     def get_download_url(self, plugin):

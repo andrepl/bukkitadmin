@@ -30,7 +30,7 @@ class PluginSource(object):
 
         h2 = soup.find('h2', text='Module Builds')
 
-        url += urllib.quote(h2.nextSibling.find('a', text=plugin_name)['href'])
+        url += urllib.quote(h2.nextSibling.find('a', text=re.compile(r'^' + re.escape(plugin_name) + '.?$', re.IGNORECASE))['href'])
         soup = get_page_soup(url)
         links = filter(lambda e: not (e.text.endswith("-sources.jar") or e.text.endswith("-javadoc.jar")), soup.find('table', {'class': 'fileList'}).findAll('a', text=re.compile(r'.*\.jar')))
         url += urllib.quote(links[0]['href'])
