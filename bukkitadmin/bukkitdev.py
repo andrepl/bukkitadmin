@@ -19,7 +19,8 @@ class  PluginSource(object):
             slug = self.get_slug(name)
             url = self._get_download_url(slug)
             return url, {'slug': slug, 'last_download_url': url}
-        except:
+        except Exception as e:
+            raise e
             return None, {}
 
     def get_slug(self, plugin_name):
