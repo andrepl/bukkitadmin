@@ -47,7 +47,7 @@ class  PluginSource(object):
         soup = get_page_soup(url)
         if DEBUG:
             print "page: ", soup.find("title")
-        return soup.find('a', text="Download").parent['href']
+        return soup.find('a', text="Download")['href']
 
     def get_download_url(self, plugin):
         meta = plugin.get_meta()
