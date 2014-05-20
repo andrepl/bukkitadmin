@@ -125,7 +125,7 @@ class ServerCreate(Command):
 
         if os.path.exists(options.directory):
             if os.listdir(options.directory):
-                print "ERROR: Directory %s already exists." % (options.directory,)
+                print "ERROR: Directory %s already exists and is not empty." % (options.directory,)
                 return 1
         else:
             os.mkdir(options.directory)
@@ -205,6 +205,8 @@ class ServerRemove(Command):
                     ), default="no"):
                 print "Permanently deleting all files in %s" % (server.get_root_dir(),)
                 shutil.rmtree(server.get_root_dir())
+        else:
+            print "server files were NOT deleted.  You will not be able to create a server with the same name until you (re)move the %s directory" % (server.name,)
 
 
 class ServerInfo(Command):
