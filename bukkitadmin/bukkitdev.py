@@ -15,17 +15,16 @@ class  PluginSource(object):
     name = 'bukkitdev'
 
     def search(self, name):
-        try:
-            slug = self.get_slug(name)
-            url = self._get_download_url(slug)
-            return url, {'slug': slug, 'last_download_url': url}
-        except Exception as e:
-            raise e
-            return None, {}
+
+        slug = self.get_slug(name)
+        url = self._get_download_url(slug)
+        return url, {'slug': slug, 'last_download_url': url}
 
     def get_slug(self, plugin_name):
         time.sleep(0.5)
         soup = get_page_soup("http://dev.bukkit.org/bukkit-plugins/?search=%s" % (plugin_name,))
+        if DEBUG:
+            print "results soup", soup
         tbl = soup.find("table", {'class': "listing"}).find("tbody").findAll('tr', {'class': 'row-joined-to-next'})
         for row in tbl:
             link = row.find('h2').contents[0]
@@ -40,6 +39,8 @@ class  PluginSource(object):
         feed = feedparser.parse(feed_url)
         if DEBUG:
             print "feed Entries: ", len(feed.entries)
+        if not feed.entries:
+            return None
         url = feed.entries[0]['links'][0]['href']
         time.sleep(0.5)
         if DEBUG:

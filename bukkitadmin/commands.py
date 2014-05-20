@@ -283,18 +283,18 @@ class ServerAddPlugin(Command):
                     dep = library.get_plugin(depname)
                     additional.add(dep)
 
-            if not installing:
-                print "No plugins to install."
-                return 0
+        if not installing:
+            print "No plugins to install."
+            return 0
 
-            print "Installing %s" % (", ".join([repr(i) for i in installing]),)
-            if additional:
-                print "The following dependencies will also be installed:", ", ".join([repr(i) for i in additional])
-            if query_yes_no("Install %s new plugins?" % (len(installing) + len(additional),), default="yes"):
-                for plugin in installing:
-                    server.update_plugin(plugin)
-                for plugin in additional:
-                    server.update_plugin(plugin)
+        print "Installing %s" % (", ".join([repr(i) for i in installing]),)
+        if additional:
+            print "The following dependencies will also be installed:", ", ".join([repr(i) for i in additional])
+        if query_yes_no("Install %s new plugins?" % (len(installing) + len(additional),), default="yes"):
+            for plugin in installing:
+                server.update_plugin(plugin)
+            for plugin in additional:
+                server.update_plugin(plugin)
 
 
 class ServerUpdate(Command):

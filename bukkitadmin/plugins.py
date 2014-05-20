@@ -262,6 +262,7 @@ class Library(object):
                         self.register_new_plugin(dep, source=self.get_plugin_source(plugin))
                     except PluginNotFound:
                         if not isinstance(source, bukkitdev.PluginSource):
+                            print "%s not found on %s, searching bukkitdev" % (dep, source.name)
                             self.register_new_plugin(dep)
                         else:
                             raise
