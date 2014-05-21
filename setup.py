@@ -11,6 +11,7 @@ packages = [
 ]
 
 requires = [
+    'pager>=3.3',
     'argcomplete>=0.8.0',
     'progressbar>=2.3',
     'beautifulsoup4>=4.3.2',

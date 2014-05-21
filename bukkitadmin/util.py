@@ -5,9 +5,12 @@ import os
 import shutil
 import sys
 import tempfile
+from textwrap import TextWrapper
 import zipfile
 
 from bs4 import BeautifulSoup
+import itertools
+import pager
 from progressbar import ProgressBar, ETA, FileTransferSpeed, Percentage, Bar
 import requests
 import yaml
@@ -21,6 +24,57 @@ def chdir(dirname=None):
         yield
     finally:
         os.chdir(curdir)
+
+def prompt_choices(choices, choice_formatter=None,
+                   prompt="Your Choice [1-%s/L=list] (or ctrl+c to quit): ",
+                   header="Choices:"):
+
+    def _choice_formatter(number, choice):
+        return "%s) %s" % (number, choice)
+
+    def _prompt(pagenum):
+        """
+        Show default prompt to continue and process keypress.
+
+        It assumes terminal/console understands carriage return \r character.
+        """
+        prompt = "[Press esc or Q to stop listing, or any other key for more results...]"
+        pager.echo(prompt)
+
+        if pager.getch() in [pager.ESC_, pager.CTRL_C_, 'q', 'Q']:
+            pager.echo('\r' + ' '*(len(prompt)-1) + '\r')
+            return False
+        pager.echo('\r' + ' '*(len(prompt)-1) + '\r')
+
+
+    choices = list(choices)
+    count = len(choices)
+
+    def show_list():
+        pager.page(itertools.chain([header],
+            *(choice_formatter(i+1, c) for i, c in enumerate(choices))), pagecallback=_prompt)
+
+    if choice_formatter is None:
+        choice_formatter = _choice_formatter
+
+    show_list()
+
+    while True:
+        sys.stdout.write(prompt % (count, ))
+        choice = raw_input().lower()
+        if 'list'.startswith(choice):
+            show_list()
+            continue
+        try:
+            val = int(choice)
+            if 1 <= val <= count:
+                return choices[val-1]
+        except ValueError:
+            pass
+        print "%s is an invalid choice, please enter a value between 1 and %s (or l to list the results again)" % (choice, count,)
+
+
+
 
 def prompt_number(min_, max_, prompt="Choice"):
     while True:
@@ -159,3 +213,12 @@ def smart_truncate(content, length=100, suffix='...'):
         return content
     else:
         return ' '.join(content[:length+1].split(' ')[0:-1]) + suffix
+
+def format_search_result(number, result):
+    term_width = terminal_size()[0]
+    if term_width > 8:
+        term_width = term_width - 8
+    wrapper = TextWrapper(initial_indent="    ", subsequent_indent="    ", width=term_width)
+    return ["%s) %s" % (number, result['name'])] + wrapper.wrap(result['summary'])
+
+

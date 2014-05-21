@@ -26,8 +26,9 @@ class PluginSource(object):
         results = []
         for entry in feed.entries:
             name = entry['title'].split("#")[0].strip()
-            if string_diff(name, searchstr) < 0.75:
-                results.append({'name': name})
+            diff = string_diff(name, searchstr)
+            if diff > 0.5:
+                results.append({'name': name, 'summary': ''})
         return results
 
     def serialize(self):

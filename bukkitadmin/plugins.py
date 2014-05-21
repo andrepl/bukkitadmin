@@ -7,7 +7,7 @@ import shutil
 import yaml
 
 from . import jenkins, bukkitdev
-from bukkitadmin.util import extract_plugin_info, hashfile, download_file, query_yes_no, prompt_number, terminal_size, smart_truncate
+from bukkitadmin.util import extract_plugin_info, hashfile, download_file, query_yes_no, prompt_choices, format_search_result
 from bukkitadmin.versionparser import parse_version
 
 
@@ -240,18 +240,8 @@ class Library(object):
             elif len(results) == 1:
                 choice = results[0]
             else:
-                print "Found multiple matches for '%s' on source %s" % (name, source.name)
-                desc_width = terminal_size()[0] - 8
-                if desc_width < 10:
-                    desc_width = 20 # if the terminal is too small, just display a decent amount and wrap
-
-                for i, plugin in enumerate(results):
-                    print "%s) %s\n    %s" % (i+1, plugin['name'], smart_truncate(plugin['summary'], ))
-                print "0) None of the above."
-                choice = prompt_number(0, i+1)
-                if not choice:
-                    return 0
-                choice = results[choice-1]
+                choice = prompt_choices(results, choice_formatter=format_search_result,
+                                        header="Found multiple matches for '%s' on source %s" % (name, source.name))
 
             download_url, meta = source.search_result_url(choice)
             file = download_file(download_url)
