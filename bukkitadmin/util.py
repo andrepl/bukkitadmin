@@ -38,7 +38,7 @@ def prompt_choices(choices, choice_formatter=None,
 
         It assumes terminal/console understands carriage return \r character.
         """
-        prompt = "[Press esc or Q to stop listing, or any other key for more results...]"
+        prompt = "[Press esc or Q to stop listing, or any other key for more results...] "
         pager.echo(prompt)
 
         if pager.getch() in [pager.ESC_, pager.CTRL_C_, 'q', 'Q']:
