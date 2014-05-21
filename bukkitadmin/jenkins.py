@@ -1,10 +1,13 @@
 from __future__ import absolute_import
 
-import re
-import urllib
+from datetime import datetime
 import feedparser
+import re
+from time import mktime
+import urllib
 
-from .util import download_file, get_page_soup, string_diff
+from .util import download_file, get_page_soup, string_diff, get_request_session, feed_parse
+
 
 class PluginSource(object):
 
@@ -22,13 +25,19 @@ class PluginSource(object):
             return None, {}
 
     def search(self, searchstr):
-        feed = feedparser.parse("http://%s/rssLatest" % (self.host,))
+        feed = feed_parse("http://%s/rssLatest" % (self.host,))
         results = []
         for entry in feed.entries:
             name = entry['title'].split("#")[0].strip()
+            stage = entry['title'].rsplit("(")[1][:-1]
             diff = string_diff(name, searchstr)
             if diff > 0.5:
-                results.append({'name': name, 'summary': ''})
+                results.append({
+                    'name': name,
+                    'stage': stage,
+                    'last_updated': datetime.fromtimestamp(mktime(entry['updated_parsed'])),
+                    'summary': ''
+                })
         return results
 
     def serialize(self):

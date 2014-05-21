@@ -7,6 +7,7 @@ import shutil
 import yaml
 
 from . import jenkins, bukkitdev
+import itertools
 from bukkitadmin.util import extract_plugin_info, hashfile, download_file, query_yes_no, prompt_choices, format_search_result
 from bukkitadmin.versionparser import parse_version
 
@@ -232,15 +233,25 @@ class Library(object):
             elif isinstance(source, basestring):
                 source = self.sources[source]
 
-            results = source.search(name)
+            peek, results = itertools.tee(source.search(name))
+            only = None
+            second = None
+            try:
+                only = next(peek)
+                second = next(peek)
+            except StopIteration:
+                if only:
+                    choice = only
+                else:
+                    raise PluginNotFound(name)
 
-            if len(results) == 0:
-                raise PluginNotFound(name)
+            _generator_cache = {'choices': results}
+            def get_choices():
+                _generator_cache['choices'],  choices = itertools.tee(_generator_cache['choices'])
+                return choices
 
-            elif len(results) == 1:
-                choice = results[0]
-            else:
-                choice = prompt_choices(results, choice_formatter=format_search_result,
+            if second:
+                choice = prompt_choices(get_choices, choice_formatter=format_search_result,
                                         header="Found multiple matches for '%s' on source %s" % (name, source.name))
             if not choice:
                 return 0
@@ -298,6 +309,7 @@ class Library(object):
         if clean_unused_dependencies or clean_unused_dependencies is None:
             unused = []
             all_dependencies = self.get_remaining_dependencies()
+
             for dep in plugin.dependencies:
                 dep_plugin = self.get_plugin(dep)
                 if dep_plugin is None:

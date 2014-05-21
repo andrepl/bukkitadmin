@@ -15,7 +15,7 @@ import feedparser
 from . import __version__, servers, jenkins
 from .plugins import InvalidPlugin, Library, NoPluginSource
 from .servers import list_servers, get_servers_file, get_server, save_servers_file, ServerNotFound
-from .util import download_file, format_as_kwargs, query_yes_no, chdir
+from .util import download_file, format_as_kwargs, query_yes_no, chdir, get_request_session, feed_parse
 from .runserver import run_server
 from .servers import InvalidServerJar
 
@@ -37,7 +37,7 @@ def plugin_completer(prefix, **kwargs):
 
     """
     lib = Library.get()
-    return [p.name for p in lib.plugins if p.name.lower().startswith(prefix)]
+    return [p.name for p in lib.plugins if p.name.lower().startswith(prefix.lower())]
 
 def plugin_source_completer(prefix, **kwargs):
     """
@@ -104,7 +104,7 @@ class ServerCreate(Command):
     def download_craftbukkit_jar(cls, options):
         versions = dict(dev='dev', beta='beta', recommended='rb')
         feed_url = "http://dl.bukkit.org/downloads/craftbukkit/feeds/latest-%s.rss" % (versions[options.version],)
-        feed = feedparser.parse(feed_url)
+        feed = feed_parse(feed_url)
         link = feed.entries[0].links[0]['href']
         parts = link.rsplit('/', 3)
         url = '/'.join([parts[0], 'get'] + parts[2:3] + ['craftbukkit.jar'])

@@ -10,10 +10,13 @@ import zipfile
 
 from bs4 import BeautifulSoup
 import itertools
+import feedparser
 import pager
 from progressbar import ProgressBar, ETA, FileTransferSpeed, Percentage, Bar
 import requests
 import yaml
+from requests_cache import CachedSession
+
 
 @contextlib.contextmanager
 def chdir(dirname=None):
@@ -25,8 +28,8 @@ def chdir(dirname=None):
     finally:
         os.chdir(curdir)
 
-def prompt_choices(choices, choice_formatter=None,
-                   prompt="Your Choice [1-%s/L=list] (or ctrl+c to quit): ",
+def prompt_choices(choices_function, choice_formatter=None,
+                   prompt="Your Choice [1-#/L=list] (or ctrl+c to quit): ",
                    header="Choices:"):
 
     def _choice_formatter(number, choice):
@@ -48,16 +51,16 @@ def prompt_choices(choices, choice_formatter=None,
                 return False
         except KeyboardInterrupt:
             # pager is supposed to catch ctrl+c but it doesn't appear to
-            return False
+            sys.exit(0)
         pager.echo('\r' + ' '*(len(prompt)-1) + '\r')
 
-
-    choices = list(choices)
-    count = len(choices)
-
+    _counter = {'max': 0}
     def show_list():
-        page(itertools.chain([header],
-            *(choice_formatter(i+1, c) for i, c in enumerate(choices))), pagecallback=_prompt)
+        def gen():
+            for num, c in enumerate(choices_function()):
+                for line in choice_formatter(num+1, c):
+                    yield line
+        page(gen(), pagecallback=_prompt)
 
     if choice_formatter is None:
         choice_formatter = _choice_formatter
@@ -65,7 +68,7 @@ def prompt_choices(choices, choice_formatter=None,
     show_list()
 
     while True:
-        sys.stdout.write(prompt % (count, ))
+        sys.stdout.write(prompt)
         try:
             choice = raw_input().lower()
         except KeyboardInterrupt:
@@ -75,11 +78,14 @@ def prompt_choices(choices, choice_formatter=None,
             continue
         try:
             val = int(choice)
-            if 1 <= val <= count:
-                return choices[val-1]
+            if 1 <= val:
+                try:
+                    return next(itertools.islice(choices_function(), val-1, val))
+                except StopIteration:
+                    raise ValueError("Invalid Choice?")
         except ValueError:
             pass
-        print "%s is an invalid choice, please enter a value between 1 and %s (or l to list the results again)" % (choice, count,)
+        print "%s is an invalid choice, please enter a number greater than 0 (or l to list the results again)" % (choice, )
 
 
 
@@ -167,8 +173,19 @@ def download_file(url, use_progressbar=True, destination=None):
     return fname
 
 
+_requests_session = None
+
+
+def get_request_session():
+    global _requests_session
+    if _requests_session is None:
+        _requests_session = CachedSession('.bukkadmin', backend='sqlite',expire_after=60*60, extension='cache')
+    return _requests_session
+
+
 def get_page_soup(url):
-    resp = requests.get(url)
+
+    resp = get_request_session().get(url)
     soup = BeautifulSoup(resp.text)
     return soup
 
@@ -227,18 +244,33 @@ def format_search_result(number, result):
     if term_width > 8:
         term_width = term_width - 8
     wrapper = TextWrapper(initial_indent="    ", subsequent_indent="    ", width=term_width)
-    heading = "%s) %s" % (number, result['name'])
+    heading = "%s) %s " % (number, result['name'])
 
-    if 'authors' in result:
-        heading += " (%s)" % (", ".join(result['authors']),)
+    if 'categories' in result and result['categories']:
+        heading += "[%s] " % (", ".join(result['categories']),)
 
-    updated = ""
+    if 'authors' in result and result['authors']:
+        heading += "(author: %s) " % (", ".join(result['authors']),)
+
+    right = ""
+
     if 'last_updated' in result:
-        updated = "Updated %s" % (result['last_updated'])
-        heading += updated.rjust(term_width - len(heading))
+        right += " Updated %s" % (result['last_updated'])
 
-    return [heading, ''] + wrapper.wrap(result['summary']) + ['']
+    if 'stage' in result:
+        right += " [%s]" % (result['stage'],)
+    heading += right.rjust(term_width - len(heading))
 
+    lines = [heading, '']
+    if 'summary' in result and result['summary']:
+        lines += wrapper.wrap(result['summary'])
+        lines.append('')
+    return lines
+
+
+
+def feed_parse(url):
+    return feedparser.parse(get_request_session().get(url).text)
 
 def page(content, pagecallback=None):
     """
@@ -252,7 +284,7 @@ def page(content, pagecallback=None):
     width = pager.getwidth()
     height = pager.getheight()
     pagenum = 1
-
+    print content.next()
     try:
         try:
             line = content.next().rstrip("\r\n")

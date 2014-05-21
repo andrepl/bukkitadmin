@@ -1,13 +1,14 @@
 from __future__ import absolute_import
 from datetime import datetime
 import os
+import urllib
 from bs4 import NavigableString
 
 import feedparser
 import requests
 import time
 
-from .util import download_file, get_page_soup
+from .util import download_file, get_page_soup, get_request_session, feed_parse
 
 DEBUG = 'BUKKITADMIN_DEBUG' in os.environ
 
@@ -21,22 +22,34 @@ class  PluginSource(object):
         return url, {'slug': search_result['slug'], 'last_download_url': url}
 
     def search(self, searchstr):
-        soup = get_page_soup("http://dev.bukkit.org/bukkit-plugins/?search=%s" % (searchstr,))
-        tbl = soup.find("table", {'class': "listing"}).find("tbody").findAll('tr', {'class': 'row-joined-to-next'})
-        results = []
-        for row in tbl:
-            link = row.find('h2').contents[0]
-            next = row.nextSibling
-            while isinstance(next, NavigableString):
-                next = next.nextSibling
-            results.append(dict(
-                name=link.text,
-                last_updated=datetime.fromtimestamp(int(row.find('td', 'col-date').find('span', 'standard-date')['data-epoch'])),
-                authors=[a.text for a in row.find('td', 'col-user').findAll('a')],
-                summary=next.td.get_text(),
-                slug=link['href'].strip('/').split('/')[-1],
-            ))
-        return results
+        base_url = "http://dev.bukkit.org/bukkit-plugins/?search=%s" % (urllib.quote(searchstr),)
+        page = 1
+        has_next = True
+        while has_next:
+            url = base_url
+            if page > 1:
+                url += "&page=%s" % (page,)
+            soup = get_page_soup(url)
+            tbl = soup.find("table", {'class': "listing"}).find("tbody").findAll('tr', {'class': 'row-joined-to-next'})
+            pages = soup.find("div", "listing-pagination-top")
+            has_next = pages.find("li", "listing-pagination-pages-next") is not None
+            for row in tbl:
+                link = row.find('h2').contents[0]
+                next = row.nextSibling
+                while isinstance(next, NavigableString):
+                    next = next.nextSibling
+                yield dict(
+                    name=link.text,
+                    categories=[a.text for a in row.find('td', 'col-category').findAll('a', 'category')],
+                    last_updated=datetime.fromtimestamp(int(row.find('td', 'col-date').find('span', 'standard-date')['data-epoch'])),
+                    stage=row.find('td', 'col-status').text,
+                    authors=[a.text for a in row.find('td', 'col-user').findAll('a')],
+                    summary=next.td.get_text(),
+                    slug=link['href'].strip('/').split('/')[-1],
+                )
+            page += 1
+
+
 
     def get_slug(self, plugin_name):
         time.sleep(0.5)
@@ -54,7 +67,7 @@ class  PluginSource(object):
         if DEBUG:
             print "fetching %s" % (feed_url,)
         time.sleep(0.5)
-        feed = feedparser.parse(feed_url)
+        feed = feed_parse(feed_url)
         if DEBUG:
             print "feed Entries: ", len(feed.entries)
         if not feed.entries:

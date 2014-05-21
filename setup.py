@@ -11,6 +11,7 @@ packages = [
 ]
 
 requires = [
+    'requests_cache>=0.4.4',
     'pager>=3.3',
     'argcomplete>=0.8.0',
     'progressbar>=2.3',
