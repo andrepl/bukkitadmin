@@ -40,7 +40,7 @@ def prompt_choices(choices, choice_formatter=None,
         """
         if linesleft > 1:
             return False
-        prompt = "[Press esc or Q to stop listing, or any other key for more results... (%s lines left)] " % (linesleft,)
+        prompt = "[Press esc or Q to stop listing, or any other key for more results... ] "
         pager.echo(prompt)
         try:
             if pager.getch() in [pager.ESC_, pager.CTRL_C_, 'q', 'Q']:
@@ -227,7 +227,17 @@ def format_search_result(number, result):
     if term_width > 8:
         term_width = term_width - 8
     wrapper = TextWrapper(initial_indent="    ", subsequent_indent="    ", width=term_width)
-    return ["%s) %s" % (number, result['name'])] + wrapper.wrap(result['summary'])
+    heading = "%s) %s" % (number, result['name'])
+
+    if 'authors' in result:
+        heading += " (%s)" % (", ".join(result['authors']),)
+
+    updated = ""
+    if 'last_updated' in result:
+        updated = "Updated %s" % (result['last_updated'])
+        heading += updated.rjust(term_width - len(heading))
+
+    return [heading, ''] + wrapper.wrap(result['summary']) + ['']
 
 
 def page(content, pagecallback=None):

@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from datetime import datetime
 import os
 from bs4 import NavigableString
 
@@ -30,6 +31,8 @@ class  PluginSource(object):
                 next = next.nextSibling
             results.append(dict(
                 name=link.text,
+                last_updated=datetime.fromtimestamp(int(row.find('td', 'col-date').find('span', 'standard-date')['data-epoch'])),
+                authors=[a.text for a in row.find('td', 'col-user').findAll('a')],
                 summary=next.td.get_text(),
                 slug=link['href'].strip('/').split('/')[-1],
             ))
