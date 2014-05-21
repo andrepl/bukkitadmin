@@ -32,17 +32,22 @@ def prompt_choices(choices, choice_formatter=None,
     def _choice_formatter(number, choice):
         return "%s) %s" % (number, choice)
 
-    def _prompt(pagenum):
+    def _prompt(pagenum, linesleft):
         """
         Show default prompt to continue and process keypress.
 
         It assumes terminal/console understands carriage return \r character.
         """
-        prompt = "[Press esc or Q to stop listing, or any other key for more results...] "
+        if linesleft > 1:
+            return False
+        prompt = "[Press esc or Q to stop listing, or any other key for more results... (%s lines left)] " % (linesleft,)
         pager.echo(prompt)
-
-        if pager.getch() in [pager.ESC_, pager.CTRL_C_, 'q', 'Q']:
-            pager.echo('\r' + ' '*(len(prompt)-1) + '\r')
+        try:
+            if pager.getch() in [pager.ESC_, pager.CTRL_C_, 'q', 'Q']:
+                pager.echo('\r' + ' '*(len(prompt)-1) + '\r')
+                return False
+        except KeyboardInterrupt:
+            # pager is supposed to catch ctrl+c but it doesn't appear to
             return False
         pager.echo('\r' + ' '*(len(prompt)-1) + '\r')
 
@@ -51,7 +56,7 @@ def prompt_choices(choices, choice_formatter=None,
     count = len(choices)
 
     def show_list():
-        pager.page(itertools.chain([header],
+        page(itertools.chain([header],
             *(choice_formatter(i+1, c) for i, c in enumerate(choices))), pagecallback=_prompt)
 
     if choice_formatter is None:
@@ -61,7 +66,10 @@ def prompt_choices(choices, choice_formatter=None,
 
     while True:
         sys.stdout.write(prompt % (count, ))
-        choice = raw_input().lower()
+        try:
+            choice = raw_input().lower()
+        except KeyboardInterrupt:
+            return None
         if 'list'.startswith(choice):
             show_list()
             continue
@@ -220,5 +228,59 @@ def format_search_result(number, result):
         term_width = term_width - 8
     wrapper = TextWrapper(initial_indent="    ", subsequent_indent="    ", width=term_width)
     return ["%s) %s" % (number, result['name'])] + wrapper.wrap(result['summary'])
+
+
+def page(content, pagecallback=None):
+    """
+    Output `content`, call `pagecallback` after every page with page
+    number as a parameter. `pagecallback` may return False to terminate
+    pagination.
+
+    Default callback shows prompt, waits for keypress and aborts on
+    'q', ESC or Ctrl-C.
+    """
+    width = pager.getwidth()
+    height = pager.getheight()
+    pagenum = 1
+
+    try:
+        try:
+            line = content.next().rstrip("\r\n")
+        except AttributeError:
+            # Python 3 compatibility
+            line = content.__next__().rstrip("\r\n")
+    except StopIteration:
+        pagecallback(pagenum, height-1)
+        return
+
+    while True:     # page cycle
+        linesleft = height-1 # leave the last line for the prompt callback
+        while linesleft:
+            linelist = [line[i:i+width] for i in range(0, len(line), width)]
+            if not linelist:
+                linelist = ['']
+            lines2print = min(len(linelist), linesleft)
+            for i in range(lines2print):
+                print(linelist[i])
+            linesleft -= lines2print
+            linelist = linelist[lines2print:]
+
+            if linelist: # prepare symbols left on the line for the next iteration
+                line = ''.join(linelist)
+                continue
+            else:
+                try:
+                    try:
+                        line = content.next().rstrip("\r\n")
+                    except AttributeError:
+                        # Python 3 compatibility
+                        line = content.__next__().rstrip("\r\n")
+                except StopIteration:
+                    pagecallback(pagenum, linesleft)
+                    return
+
+        if pagecallback(pagenum, linesleft) == False:
+            return
+        pagenum += 1
 
 

@@ -242,6 +242,8 @@ class Library(object):
             else:
                 choice = prompt_choices(results, choice_formatter=format_search_result,
                                         header="Found multiple matches for '%s' on source %s" % (name, source.name))
+            if not choice:
+                return 0
 
             download_url, meta = source.search_result_url(choice)
             file = download_file(download_url)
